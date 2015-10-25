@@ -9,6 +9,7 @@ if test ! $ZFS; then
 fi
 
 # Type is full by default
+TYPE=f
 
 # Loop through all parameters passed to the script
 while test $# -gt 0; do
