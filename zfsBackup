@@ -1,0 +1,41 @@
+#!/bin/sh
+
+# Check if we have zfs, it's pointless if we don't
+ZFS=`which zfs`
+
+if test ! $ZFS; then
+	echo "This script requires ZFS, which you don't have"
+	exit
+fi
+
+# Type is full by default
+
+# Loop through all parameters passed to the script
+while test $# -gt 0; do
+	opt=$1
+	shift
+
+	case $opt in
+		# standard usage patterns:
+		-t | --type)
+			# Check if the parameter actually exists
+			case $1 in -*|"")
+				echo "Either use 'f' or 'i' when specifying type"
+				exit
+			esac
+			TYPE=$1
+			shift
+			;;
+		# -*) func_fatal_help "unrecognized option \`$opt'" ;;
+	esac
+done
+
+# Perform some sanity checks
+# Type can only be full or incremental
+if test $TYPE = f; then
+	echo full
+elif test $TYPE = i; then
+	echo incremental
+else
+	echo "Invalid backup type, use either f, i"
+fi
