@@ -11,13 +11,16 @@ fi
 # Type is full by default
 TYPE=f
 
+# Get the current date
+TODAY=`date "+%Y%m%d"`
+
 # Loop through all parameters passed to the script
 while test $# -gt 0; do
 	opt=$1
 	shift
 
 	case $opt in
-		# standard usage patterns:
+		# Backup type, has to be either full or incremental:
 		-t | --type)
 			# Check if the parameter actually exists
 			case $1 in -*|"")
@@ -27,16 +30,71 @@ while test $# -gt 0; do
 			TYPE=$1
 			shift
 			;;
-		# -*) func_fatal_help "unrecognized option \`$opt'" ;;
+		# Destination folder, backup can be saved locally on disk
+		-d | --destination)
+			# Check if the parameter actually exists
+			case $1 in -*|"")
+				echo "destination mandatory when specifying -d"
+				exit
+			esac
+			DEST=$1
+			shift
+			;;
+		# FTP server, in case the backup needs to be uploaded to an FTP server
+		-f | --ftp)		
+			# Check if the parameter actually exists
+			case $1 in -*|"")
+				echo "FTP server address mandatory when specifying -f"
+				exit
+			esac
+			FTP=$1
+			shift
+			;;
 	esac
 done
 
 # Perform some sanity checks
 # Type can only be full or incremental
 if test $TYPE = f; then
-	echo full
 elif test $TYPE = i; then
-	echo incremental
 else
 	echo "Invalid backup type, use either f, i"
+fi
+
+# Make sure destination and FTP are not both defined at the same time
+if test $FTP && test $DEST; then
+	echo "You cannot specify local and FTP destinations at the same time"
+	exit
+fi
+
+# User specified a local destination
+if test $DEST; then
+	# If we're saving to a local destination, make sure the destination folder is writable
+	if test ! -e $DEST; then
+		echo "Destination folder doesn't exist"
+		exit
+	fi
+	if test ! -d $DEST; then
+		echo "Destination is not a folder, backup cannot be saved"
+	fi
+	if test ! -w $DEST; then
+		echo "Destination folder not writable, quitting"
+	fi
+fi
+
+# Common logic for local and FTP backup
+
+# Full backup
+if test $TYPE = f; then
+	# Delete the previous full backup, if it exists
+	if test $($ZFS list -o name -H -t snapshot | grep zroot/www_test@full); then
+		zfs destroy zroot/www_test@full
+	fi
+
+	# Create a new zfs snapshot
+	zfs snapshot -r zroot/www_test@full
+
+	# Add logic for ftp backup
+
+	zfs send zroot/www_test@full | gzip > $DEST/zroot_www_test@full_$TODAY.gzip
 fi
