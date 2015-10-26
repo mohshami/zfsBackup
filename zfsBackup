@@ -23,9 +23,12 @@ while test $# -gt 0; do
 		# Backup type, has to be either full or incremental:
 		-t | --type)
 			# Check if the parameter actually exists
-			case $1 in -*|"")
-				echo "Either use 'f' or 'i' when specifying type"
-				exit
+			case $1 in
+				f|i)
+				;;
+				*|"")
+					echo "Either use 'f' or 'i' when specifying type"
+					exit
 			esac
 			TYPE=$1
 			shift
@@ -54,13 +57,6 @@ while test $# -gt 0; do
 done
 
 # Perform some sanity checks
-# Type can only be full or incremental
-if test $TYPE = f; then
-elif test $TYPE = i; then
-else
-	echo "Invalid backup type, use either f, i"
-fi
-
 # Make sure destination and FTP are not both defined at the same time
 if test $FTP && test $DEST; then
 	echo "You cannot specify local and FTP destinations at the same time"
@@ -83,6 +79,14 @@ if test $DEST; then
 fi
 
 # Common logic for local and FTP backup
+# Before we go ahead, check if ncftp exists
+if test $FTP; then
+	NCFTPPUT=`which ncftpput`
+	if test -z $NCFTPPUT; then
+		echo "NCFTP is not installed, exiting"
+		exit
+	fi
+fi
 
 # Full backup
 if test $TYPE = f; then
@@ -95,6 +99,19 @@ if test $TYPE = f; then
 	zfs snapshot -r zroot/www_test@full
 
 	# Add logic for ftp backup
+	if test $FTP; then
+		# Set up a temporary destination
+		DEST=/tmp/$$
+
+		# Create the temporary folder
+		mkdir -p $DEST
+	fi
 
 	zfs send zroot/www_test@full | gzip > $DEST/zroot_www_test@full_$TODAY.gzip
+
+	# If this was a local backup then there is nothing more to do
+	# Otherwise upload the file
+	if test $FTP; then
+		# 
+	fi
 fi
